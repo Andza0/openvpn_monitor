@@ -1,0 +1,27 @@
+#!/bin/sh /etc/rc.common
+
+USE_PROCD=1
+
+start_service() {
+
+	. /lib/functions.sh
+	config load openvpn
+
+	process_instance() {
+		local instance="$1"
+		local management
+		local name
+
+		config_get management "$instance" management '0'
+		config_get name "$instance" name
+
+		if [ "$management" -neq '0' ]; then
+			procd_open_instance
+			procd_set_param command {lua script} "$name" "$management"
+			procd_close_instance
+		fi
+
+	}
+
+	config_foreach process_instance openvpn
+}
