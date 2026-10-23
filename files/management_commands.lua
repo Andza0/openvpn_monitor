@@ -91,10 +91,6 @@ function connect()
 	return 1
 end
 
-function receive_status()
-	
-end
-
 function send_command(command, arg)
     local conn = connect()
     
