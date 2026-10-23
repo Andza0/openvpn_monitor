@@ -26,41 +26,32 @@ local function split(str, separator)
 end
 
 local function parseOpenVPN(response)
-    local result = {
-        clients = {}
-    }
+	local result = {
+		clients = {}
+	}
+	local headers = {}
 
-    local headers = {}
-
-    -- Process one line at a time
-    for _, line in ipairs(split(response, "\n")) do
+	for _, line in ipairs(split(response, "\n")) do
         line = line:gsub("\r$", "")
 
-        -- Split columns by tabs
         local fields = split(line, "\t")
-
-        -- First field indicates the record type
         local recordType = fields[1]
 
         if recordType == "HEADER" and fields[2] == "CLIENT_LIST" then
             local section = fields[2]
-
             headers[section] = {}
 
-            -- Skip "HEADER" and the section name
             for i = 3, #fields do
                 table.insert(headers[section], fields[i])
-            end
+        end
 
         elseif recordType == "CLIENT_LIST" then
-
             local names = headers[recordType]
-
-            if names then
+            
+	    if names then
                 local entry = {}
-
-                -- Map each column to its header
-                for i, name in ipairs(names) do
+                
+		for i, name in ipairs(names) do
                     entry[name] = fields[i + 1] or ""
                 end
 
@@ -75,6 +66,7 @@ end
 
 function connect()
 	local ip, port = string.match(management, "^(%S+)%s+(%S+)$")
+	
 	port = tonumber(port)
 	if not ip or not port then
 		log("err", "IP or Port is invalid!")
@@ -82,16 +74,19 @@ function connect()
 	end
 
 	client, err = socket.tcp()
+	
 	if not client then
 		log("err", "socket create err:" .. err)
 		return 0
 	end
 	
 	success, err = client:connect(ip, port)
+	
 	if not success then
 		log("err", "conn err: " .. err)
 		client:close()
 		return 0
+	
 	end
 	return 1
 end
@@ -102,6 +97,7 @@ end
 
 function send_command(command, arg)
     local conn = connect()
+    
     if conn ~= 1 then
         return "ERR_CONN"
     end
@@ -135,9 +131,9 @@ function send_command(command, arg)
             return "ERR_RECV"
         end
 
-        -- Ignore asynchronous management messages
-        if line:sub(1, 1) == ">" then
 
+        if line:sub(1, 1) == ">" then
+	-- skip line
         elseif is_status and line == "END" then
             break
 
