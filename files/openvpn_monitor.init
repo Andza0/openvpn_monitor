@@ -3,8 +3,6 @@
 USE_PROCD=1
 
 start_service() {
-
-	. /lib/functions.sh
 	config_load 'openvpn'
 	logger -t openvpn_monitor "Starting iteration"
 	process_instance() {
