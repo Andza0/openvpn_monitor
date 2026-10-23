@@ -4,6 +4,75 @@ local socket = require("socket")
 
 local client, success, err
 
+local function split(str, separator)
+    assert(separator ~= "", "Separator cannot be empty")
+
+    local result = {}
+    local start = 1
+
+    while true do
+        local first, last = string.find(str, separator, start, true)
+
+        if not first then
+            table.insert(result, string.sub(str, start))
+            break
+        end
+
+        table.insert(result, string.sub(str, start, first - 1))
+        start = last + 1
+    end
+
+    return result
+end
+
+local function parseOpenVPN(response)
+    local result = {
+        clients = {}
+    }
+
+    local headers = {}
+
+    -- Process one line at a time
+    for _, line in ipairs(split(response, "\n")) do
+        line = line:gsub("\r$", "")
+
+        -- Split columns by tabs
+        local fields = split(line, "\t")
+
+        -- First field indicates the record type
+        local recordType = fields[1]
+
+        if recordType == "HEADER" and fields[2] == "CLIENT_LIST" then
+            local section = fields[2]
+
+            headers[section] = {}
+
+            -- Skip "HEADER" and the section name
+            for i = 3, #fields do
+                table.insert(headers[section], fields[i])
+            end
+
+        elseif recordType == "CLIENT_LIST" then
+
+            local names = headers[recordType]
+
+            if names then
+                local entry = {}
+
+                -- Map each column to its header
+                for i, name in ipairs(names) do
+                    entry[name] = fields[i + 1] or ""
+                end
+
+                table.insert(result.clients, entry)
+            end
+        end
+    end
+
+    return result
+end
+
+
 function connect()
 	local ip, port = string.match(management, "^(%S+)%s+(%S+)$")
 	port = tonumber(port)
@@ -27,45 +96,97 @@ function connect()
 	return 1
 end
 
-function send_command(command, arg)
-	local conn = connect()
-	if conn ~= 1 then
-		return "ERR_CONN"
-	end
-
-	if arg ~= 0 then
-		success, err = client:send(command .. " " .. arg .. "\n")
-	else
-		success, err = client:send(command .. "\n")
-	end
-	if not success then
-		log("err", err)
-		client:close()
-		return "ERR_SEND"
-	end
-
-	local lines = {}
-	while true do
-		local line, err = client:receive("*l")
-
-		if not line then
-			log("err", "Receive failed:" .. err)
-			client:close()
-			return "ERR_RECV"
-		end
-
-		if line == "END" then 
-			break
-		end
-
-		table.insert(lines, line)
-
-	end
-
-	local message = table.concat(lines, "\n")
-	client:close()
-	return message
-end
+function receive_status()
 	
+end
+
+function send_command(command, arg)
+    local conn = connect()
+    if conn ~= 1 then
+        return "ERR_CONN"
+    end
+
+    local is_status = command:match("^status") ~= nil
+    local message
+
+    if arg ~= nil then
+        message = command .. " " .. tostring(arg) .. " HALT\n"
+    else
+        message = command .. "\n"
+    end
+
+    local success, err = client:send(message)
+
+    if not success then
+        log("err", tostring(err))
+        client:close()
+        return "ERR_SEND"
+    end
+
+    local lines = {}
+
+    while true do
+        local line, err = client:receive("*l")
+
+        if not line then
+            log("err", "Receive failed: " .. tostring(err))
+            client:close()
+            return "ERR_RECV"
+        end
+
+        -- Ignore asynchronous management messages
+        if line:sub(1, 1) == ">" then
+            -- Skip notification
+
+        elseif is_status and line == "END" then
+            break
+
+        elseif not is_status and (
+            line:match("^SUCCESS:") or
+            line:match("^ERROR:")
+        ) then
+            table.insert(lines, line)
+            break
+
+        else
+            table.insert(lines, line)
+        end
+    end
+
+    client:close()
+
+    local response = table.concat(lines, "\n")
+
+    if is_status then
+        return parseOpenVPN(response)
+    end
+
+    return response
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

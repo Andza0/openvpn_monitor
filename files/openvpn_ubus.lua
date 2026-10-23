@@ -37,7 +37,7 @@ local objects = {
 			end,
 			{}
 		},
-		disconnect_client = 
+		disconnect_client = {
 			function(req, msg)
 				local result = send_command("client-kill", msg.arg)
 				conn:reply(req, { response = result })
@@ -45,10 +45,10 @@ local objects = {
 			{arg = ubus.STRING}
 		}
 	}
-
+}
 conn:add(objects)
-
 uloop.run()
 
+uloop.close()
 
 

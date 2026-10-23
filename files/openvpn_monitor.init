@@ -16,12 +16,12 @@ start_service() {
 
 		config_get management "$instance" management '0'
 		config_get name "$instance" name
+		config_get enabled "$instance" enable '0'
 
-		if [ "$management" != '0' ]; then
+		if [ "$management" != '0' ] && [ "$enabled" != 0 ]; then
 			procd_open_instance "$instance"
-			procd_set_param command /bin/openvpn_ubus "$name" "$management"
+			procd_set_param command /usr/bin/openvpn_ubus.lua "$name" "$management"		
 			logger -t openvpn_ubus "Starting service instance $name"
-			procd_set_param respawn
 			procd_close_instance
 		fi
 
@@ -29,3 +29,9 @@ start_service() {
 
 	config_foreach process_instance openvpn
 }
+
+service_triggers() {
+	procd_add_reload_trigger 'openvpn'
+}
+
+
