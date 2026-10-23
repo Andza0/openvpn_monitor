@@ -106,13 +106,14 @@ function send_command(command, arg)
         return "ERR_CONN"
     end
 
-    local is_status = command:match("^status") ~= nil
+    local is_status
     local message
 
-    if arg ~= nil then
+    if arg ~= "-1" then
         message = command .. " " .. tostring(arg) .. " HALT\n"
     else
         message = command .. "\n"
+	is_status = true
     end
 
     local success, err = client:send(message)
@@ -136,7 +137,6 @@ function send_command(command, arg)
 
         -- Ignore asynchronous management messages
         if line:sub(1, 1) == ">" then
-            -- Skip notification
 
         elseif is_status and line == "END" then
             break

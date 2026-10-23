@@ -32,7 +32,7 @@ local objects = {
 	[name] = {
 		client_info = {
 			function(req, msg)
-				local result = send_command("status 3", 0)
+				local result = send_command("status 3", "-1")
 				conn:reply(req, { response = result })
 			end,
 			{}
